@@ -33,6 +33,11 @@ function LoginPage() {
     return msg;
   };
 
+  const errorMessage = (err: unknown, fallback: string) => {
+    if (err instanceof Error) return err.message;
+    return fallback;
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (busy) return;
@@ -60,8 +65,8 @@ function LoginPage() {
         if (error) throw error;
         nav({ to: "/app" });
       }
-    } catch (err: any) {
-      toast.error(friendlyError(err?.message ?? "Authentication failed"));
+    } catch (err: unknown) {
+      toast.error(friendlyError(errorMessage(err, "Authentication failed")));
     } finally {
       setBusy(false);
     }
@@ -77,8 +82,8 @@ function LoginPage() {
       if (result.error) throw result.error;
       if (!result.redirected) nav({ to: "/app" });
       // Browser is redirecting to Google. Keep busy state true.
-    } catch (err: any) {
-      toast.error(err?.message ?? "Google sign-in failed");
+    } catch (err: unknown) {
+      toast.error(errorMessage(err, "Google sign-in failed"));
       setBusy(false);
     }
   };
