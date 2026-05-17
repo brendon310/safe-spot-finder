@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { anthropicText } from "@/lib/anthropic";
-import { getWebRequest } from "@tanstack/react-start/server";
+import { getRequest } from "@tanstack/react-start/server";
 
 // Simple in-memory throttle (per worker instance) to limit abuse on this
 // public endpoint. Not a hard guarantee across distributed workers, but
@@ -12,7 +12,7 @@ const MIN_GAP_MS = 4000;
 
 function clientIp(): string {
   try {
-    const req = getWebRequest();
+    const req = getRequest();
     const h = req?.headers;
     return (
       h?.get("cf-connecting-ip") ||
