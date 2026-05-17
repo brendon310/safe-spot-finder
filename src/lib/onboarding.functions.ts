@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { generateText } from "ai";
 import { supabase } from "@/integrations/supabase/client";
+import { createLovableAiModel } from "@/lib/ai-gateway";
 
 export const getPublicCatalog = createServerFn({ method: "GET" })
   .handler(async () => {
@@ -17,23 +19,12 @@ export const getCoachResponse = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("AI is not configured");
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${key}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        max_tokens: 512,
-        messages: [
-          { role: "system", content: "You are a wise, warm, deeply human life coach. The user just answered the question: 'What is the one thing that, if you changed it, would change everything?'. Write a SHORT personal response of exactly 3 to 4 sentences that: (1) acknowledges what they wrote specifically, in their own words, (2) names the underlying desire behind it, (3) tells them — clearly and without hedging — that this journey is possible. End with EXACTLY this sentence as the final line: I'll be with you every step of the way. No greetings. No preamble. No quotes. No emojis. No markdown. Plain text only." },
-          { role: "user", content: data.answer },
-        ],
-      }),
+    const { text } = await generateText({
+      model: createLovableAiModel(key),
+      maxOutputTokens: 512,
+      system: "You are a wise, warm, deeply human life coach. The user just answered the question: 'What is the one thing that, if you changed it, would change everything?'. Write a SHORT personal response of exactly 3 to 4 sentences that: (1) acknowledges what they wrote specifically, in their own words, (2) names the underlying desire behind it, (3) tells them — clearly and without hedging — that this journey is possible. End with EXACTLY this sentence as the final line: I'll be with you every step of the way. No greetings. No preamble. No quotes. No emojis. No markdown. Plain text only.",
+      prompt: data.answer,
     });
-    if (!res.ok) throw new Error(`AI error ${res.status}: ${(await res.text()).slice(0, 160)}`);
-    const json = await res.json();
-    const message: string = (json.choices?.[0]?.message?.content ?? "").trim();
+    const message: string = text.trim();
     return { message };
   });
