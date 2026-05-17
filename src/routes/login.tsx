@@ -1,8 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { lovable } from "@/integrations/lovable";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
@@ -10,76 +9,14 @@ export const Route = createFileRoute("/login")({ component: LoginPage });
 function LoginPage() {
   const nav = useNavigate();
   const { user, loading } = useAuth();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
-
-  const fromBegin = useMemo(() => {
-    if (typeof window === "undefined") return false;
-    return !!localStorage.getItem("pending_onboarding");
-  }, []);
-  useEffect(() => {
-    if (fromBegin) setMode("signup");
-  }, [fromBegin]);
 
   useEffect(() => {
     if (!loading && user) nav({ to: "/app" });
   }, [user, loading, nav]);
 
-  const friendlyError = (msg: string): string => {
-    const m = msg.toLowerCase();
-    if (m.includes("invalid login")) return "Wrong email or password.";
-    if (
-      m.includes("already registered") ||
-      m.includes("already been registered") ||
-      m.includes("user already")
-    )
-      return "An account with this email already exists.";
-    if (m.includes("email not confirmed")) return "Please confirm your email before signing in.";
-    if (m.includes("password should be at least")) return "Password must be at least 6 characters.";
-    return msg;
-  };
-
-  const errorMessage = (err: unknown, fallback: string) => {
-    if (err instanceof Error) return err.message;
-    return fallback;
-  };
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (busy) return;
-    setBusy(true);
-    try {
-      if (mode === "signup") {
-        if (password !== confirmPassword) {
-          toast.error("Passwords do not match.");
-          setBusy(false);
-          return;
-        }
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: { emailRedirectTo: window.location.origin + "/auth/callback" },
-        });
-        if (error) throw error;
-        if (data.session) {
-          nav({ to: "/app" });
-        } else {
-          toast.success("Check your email to confirm your account.");
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        nav({ to: "/app" });
-      }
-    } catch (err: unknown) {
-      toast.error(friendlyError(errorMessage(err, "Authentication failed")));
-    } finally {
-      setBusy(false);
-    }
-  };
+  const errorMessage = (err: unknown, fallback: string) =>
+    err instanceof Error ? err.message : fallback;
 
   const google = async () => {
     if (busy) return;
@@ -90,7 +27,6 @@ function LoginPage() {
       });
       if (result.error) throw result.error;
       if (!result.redirected) nav({ to: "/app" });
-      // Browser is redirecting to Google. Keep busy state true.
     } catch (err: unknown) {
       toast.error(errorMessage(err, "Google sign-in failed"));
       setBusy(false);
@@ -114,25 +50,10 @@ function LoginPage() {
 
         <div className="depth-card rounded-[1.75rem] p-7">
           <h1 className="font-display text-3xl leading-tight tracking-tight">
-            {fromBegin ? (
-              <>
-                One last thing —<br />
-                <span className="text-electric text-yellow-400">save your progress.</span>
-              </>
-            ) : mode === "signin" ? (
-              "Welcome back."
-            ) : (
-              <>
-                Begin <span className="text-electric text-yellow-400">again</span>.
-              </>
-            )}
+            Welcome to <span className="text-electric text-yellow-400">Elevate</span>.
           </h1>
           <p className="text-sm text-muted-foreground mt-2">
-            {fromBegin
-              ? "Your coach is waiting."
-              : mode === "signin"
-                ? "Pick up where you left off."
-                : "One question stands between you and day one."}
+            Sign in with Google to continue.
           </p>
 
           <button
@@ -141,82 +62,12 @@ function LoginPage() {
             className="mt-6 w-full rounded-xl border border-[#dadce0] bg-white hover:bg-[#f8f9fa] transition px-4 py-3 text-sm font-medium text-[#3c4043] flex items-center justify-center gap-3 disabled:opacity-50"
           >
             <svg className="h-[18px] w-[18px]" viewBox="0 0 48 48" aria-hidden="true">
-              <path
-                fill="#4285F4"
-                d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z"
-              />
-              <path
-                fill="#34A853"
-                d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M11.69 28.18c-.44-1.32-.69-2.73-.69-4.18s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7z"
-              />
-              <path
-                fill="#EA4335"
-                d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z"
-              />
+              <path fill="#4285F4" d="M45.12 24.5c0-1.56-.14-3.06-.4-4.5H24v8.51h11.84c-.51 2.75-2.06 5.08-4.39 6.64v5.52h7.11c4.16-3.83 6.56-9.47 6.56-16.17z" />
+              <path fill="#34A853" d="M24 46c5.94 0 10.92-1.97 14.56-5.33l-7.11-5.52c-1.97 1.32-4.49 2.1-7.45 2.1-5.73 0-10.58-3.87-12.31-9.07H4.34v5.7C7.96 41.07 15.4 46 24 46z" />
+              <path fill="#FBBC05" d="M11.69 28.18c-.44-1.32-.69-2.73-.69-4.18s.25-2.86.69-4.18v-5.7H4.34C2.85 17.09 2 20.45 2 24s.85 6.91 2.34 9.88l7.35-5.7z" />
+              <path fill="#EA4335" d="M24 10.75c3.23 0 6.13 1.11 8.41 3.29l6.31-6.31C34.91 4.18 29.93 2 24 2 15.4 2 7.96 6.93 4.34 14.12l7.35 5.7c1.73-5.2 6.58-9.07 12.31-9.07z" />
             </svg>
-            Continue with Google
-          </button>
-
-          <div className="relative my-6 text-center">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <span className="relative bg-card px-2 text-xs text-muted-foreground">or</span>
-          </div>
-
-          <form onSubmit={submit} className="space-y-3">
-            <input
-              type="email"
-              required
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
-              className="w-full rounded-xl bg-input border border-border px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring transition"
-            />
-            <input
-              type="password"
-              required
-              minLength={6}
-              autoComplete={mode === "signin" ? "current-password" : "new-password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Password"
-              className="w-full rounded-xl bg-input border border-border px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring transition"
-            />
-            {mode === "signup" && (
-              <input
-                type="password"
-                required
-                minLength={6}
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm password"
-                className="w-full rounded-xl bg-input border border-border px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring transition"
-              />
-            )}
-            <button
-              type="submit"
-              disabled={busy}
-              className="btn-chunk w-full rounded-xl grad-electric text-white px-4 py-3.5 text-sm font-bold shadow-[var(--shadow-violet)] disabled:opacity-50"
-            >
-              {busy ? "..." : mode === "signin" ? "Sign in" : "Create account"}
-            </button>
-          </form>
-
-          <button
-            onClick={() => {
-              setMode(mode === "signin" ? "signup" : "signin");
-              setConfirmPassword("");
-            }}
-            className="mt-4 w-full text-xs text-muted-foreground hover:text-foreground"
-          >
-            {mode === "signin" ? "No account? Sign up" : "Have an account? Sign in"}
+            {busy ? "..." : "Continue with Google"}
           </button>
         </div>
       </div>
