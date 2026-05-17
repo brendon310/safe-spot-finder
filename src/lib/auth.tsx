@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -14,12 +14,11 @@ const AuthCtx = createContext<Ctx>({ user: null, session: null, loading: true, s
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const initialAuthDone = useRef(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s);
-      if (initialAuthDone.current) setLoading(false);
+      setLoading(false);
     });
 
     const cleanOAuthUrl = () => {
@@ -61,7 +60,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch {
         setSession(null);
       } finally {
-        initialAuthDone.current = true;
         setLoading(false);
       }
     };
