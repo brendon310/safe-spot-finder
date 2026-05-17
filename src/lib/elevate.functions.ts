@@ -17,7 +17,7 @@ export const suggestTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ answer: z.string().min(3).max(800) }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("AI is not configured");
     const { data: catalog } = await context.supabase
       .from("tracks_catalog").select("slug,name,category,short_description").order("sort_order");
@@ -146,7 +146,7 @@ export const sendCoachMessage = createServerFn({ method: "POST" })
     content: z.string().min(1).max(4000),
   }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("AI is not configured");
 
     const { data: ut } = await context.supabase
@@ -179,7 +179,7 @@ export const sendCoachMessage = createServerFn({ method: "POST" })
 export const generateWeeklyInsight = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("AI is not configured");
 
     const { data: tracks } = await context.supabase
