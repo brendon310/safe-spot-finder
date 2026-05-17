@@ -64,8 +64,12 @@ function Dashboard() {
   const checkInFn = useServerFn(logCheckIn);
   const nav = useNavigate();
   const qc = useQueryClient();
-  const { user } = useAuth();
-  const { data, isLoading } = useQuery({ queryKey: ["userTracks"], queryFn: () => fn() });
+  const { user, loading } = useAuth();
+  const { data, isLoading } = useQuery({
+    queryKey: ["userTracks"],
+    queryFn: () => fn(),
+    enabled: !loading && !!user,
+  });
 
   const checkIn = useMutation({
     mutationFn: (userTrackId: string) => checkInFn({ data: { userTrackId, completed: true } }),
