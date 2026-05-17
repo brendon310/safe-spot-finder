@@ -1,9 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { generateText } from "ai";
 import { checkContent } from "./profanity-filter";
-import { createLovableAiModel } from "@/lib/ai-gateway";
+import { anthropicText, anthropicJSON } from "@/lib/anthropic";
 import { withArchetype, archetypeForSlug } from "@/lib/coach-archetypes";
 
 export const listCatalog = createServerFn({ method: "GET" })
