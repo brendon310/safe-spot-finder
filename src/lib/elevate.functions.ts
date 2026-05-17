@@ -17,7 +17,7 @@ export const suggestTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ answer: z.string().min(3).max(800) }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("AI is not configured");
     const { data: catalog } = await context.supabase
       .from("tracks_catalog").select("slug,name,category,short_description").order("sort_order");
@@ -146,7 +146,7 @@ export const sendCoachMessage = createServerFn({ method: "POST" })
     content: z.string().min(1).max(4000),
   }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("AI is not configured");
 
     const { data: ut } = await context.supabase
@@ -179,7 +179,7 @@ export const sendCoachMessage = createServerFn({ method: "POST" })
 export const generateWeeklyInsight = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("AI is not configured");
 
     const { data: tracks } = await context.supabase
@@ -322,10 +322,9 @@ export const getInsightsData = createServerFn({ method: "GET" })
 const CHUNK_SIZE = 10;
 const MILESTONES = [1, 3, 7, 14, 21, 30, 60, 90, 180, 365];
 
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const anthropicHeaders = (key: string) => ({
-  "x-api-key": key,
-  "anthropic-version": "2023-06-01",
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const aiHeaders = (key: string) => ({
+  "Authorization": `Bearer ${key}`,
   "content-type": "application/json",
 });
 
@@ -333,14 +332,14 @@ async function anthropicJSON(
   key: string, system: string, user: string,
   model = "claude-haiku-4-5-20251001", maxTokens = 1024,
 ): Promise<any> {
-  const res = await fetch(ANTHROPIC_URL, {
+  const res = await fetch(AI_GATEWAY_URL, {
     method: "POST",
-    headers: anthropicHeaders(key),
-    body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }] }),
+    headers: aiHeaders(key),
+    body: JSON.stringify({ model: "google/gemini-2.5-flash", max_tokens: maxTokens, messages: [{ role: "system", content: system }, { role: "user", content: user }] }),
   });
-  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) throw new Error(`AI ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const j = await res.json();
-  const txt: string = j.content?.[0]?.text ?? "{}";
+  const txt: string = j.choices?.[0]?.message?.content ?? "{}";
   try { return JSON.parse(txt); } catch { return JSON.parse(txt.replace(/^```json\s*|```$/g, "")); }
 }
 
@@ -349,14 +348,14 @@ async function anthropicText(
   messages: { role: "user" | "assistant"; content: string }[],
   model = "claude-sonnet-4-6", maxTokens = 1024,
 ): Promise<string> {
-  const res = await fetch(ANTHROPIC_URL, {
+  const res = await fetch(AI_GATEWAY_URL, {
     method: "POST",
-    headers: anthropicHeaders(key),
-    body: JSON.stringify({ model, max_tokens: maxTokens, system, messages }),
+    headers: aiHeaders(key),
+    body: JSON.stringify({ model: "google/gemini-2.5-flash", max_tokens: maxTokens, messages: [{ role: "system", content: system }, ...messages] }),
   });
-  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) throw new Error(`AI ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const j = await res.json();
-  return j.content?.[0]?.text ?? "";
+  return j.choices?.[0]?.message?.content ?? "";
 }
 
 async function generateDaysChunk(opts: {
@@ -398,7 +397,7 @@ export const startJourney = createServerFn({ method: "POST" })
     obstacle: z.string().max(400).default(""),
   }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("AI is not configured");
 
     // Ensure user_track
@@ -455,7 +454,7 @@ export const ensureDaysGenerated = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ journeyId: z.string().uuid(), throughDay: z.number().int().min(1).max(365) }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("AI is not configured");
     const { data: jr } = await context.supabase.from("journeys").select("*").eq("id", data.journeyId).eq("user_id", context.userId).single();
     if (!jr) throw new Error("Journey not found");
@@ -547,7 +546,7 @@ export const getReEntryMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ slug: z.string(), missedDays: z.number().int().min(1).max(60) }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     if (!key) return { message: "You missed some days. That's part of every real journey. The only failure is not coming back. Start with one small action today." };
     const { data: cat } = await context.supabase.from("tracks_catalog").select("name,ai_system_prompt").eq("slug", data.slug).single();
     if (!cat) throw new Error("Track not found");
@@ -565,7 +564,7 @@ export const getMilestoneMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ slug: z.string(), dayNumber: z.number().int().min(1).max(365) }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     const { data: cat } = await context.supabase.from("tracks_catalog").select("name,ai_system_prompt").eq("slug", data.slug).single();
     if (!cat) throw new Error("Track not found");
     if (!key) return { message: `Day ${data.dayNumber} reached.`, science: "" };
@@ -700,7 +699,7 @@ export const validateCheckin = createServerFn({ method: "POST" })
     if (trimmed.length < 8) {
       return { valid: false, reason: "Too short to be a real reflection." };
     }
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     if (!key) return { valid: true, reason: "" };
     const { data: cat } = await context.supabase
       .from("tracks_catalog").select("name").eq("slug", data.slug).single();
