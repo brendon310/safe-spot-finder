@@ -35,10 +35,11 @@ function AuthCallback() {
         return;
       }
 
-      // Implicit flow: tokens in URL hash
+      // Implicit flow: tokens may arrive in the URL hash, or in the query string via the OAuth broker.
       const hash = window.location.hash;
-      if (hash.includes("access_token")) {
-        const hp = new URLSearchParams(hash.slice(1));
+      const tokenSource = hash.includes("access_token") ? hash.slice(1) : window.location.search.slice(1);
+      if (tokenSource.includes("access_token")) {
+        const hp = new URLSearchParams(tokenSource);
         const hashError = hp.get("error_description");
         if (hashError) {
           toast.error(hashError);
