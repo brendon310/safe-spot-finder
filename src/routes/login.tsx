@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/lib/auth";
 
 export const Route = createFileRoute("/login")({ component: LoginPage });
@@ -13,6 +12,7 @@ function LoginPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
   const fromBegin = useMemo(() => {
@@ -23,41 +23,63 @@ function LoginPage() {
 
   useEffect(() => { if (!loading && user) nav({ to: "/app" }); }, [user, loading, nav]);
 
+  const friendlyError = (msg: string): string => {
+    const m = msg.toLowerCase();
+    if (m.includes("invalid login")) return "Wrong email or password.";
+    if (m.includes("already registered") || m.includes("already been registered") || m.includes("user already")) return "An account with this email already exists.";
+    if (m.includes("email not confirmed")) return "Please confirm your email before signing in.";
+    if (m.includes("password should be at least")) return "Password must be at least 6 characters.";
+    return msg;
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
-          email, password,
+        if (password !== confirmPassword) {
+          toast.error("Passwords do not match.");
+          setBusy(false);
+          return;
+        }
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
           options: { emailRedirectTo: window.location.origin + "/auth/callback" },
         });
         if (error) throw error;
-        toast.success("Check your email to confirm your account.");
+        if (data.session) {
+          nav({ to: "/app" });
+        } else {
+          toast.success("Check your email to confirm your account.");
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         nav({ to: "/app" });
       }
     } catch (err: any) {
-      toast.error(err.message ?? "Authentication failed");
+      toast.error(friendlyError(err?.message ?? "Authentication failed"));
     } finally {
       setBusy(false);
     }
   };
 
   const google = async () => {
+    if (busy) return;
     setBusy(true);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin + "/auth/callback",
-    });
-    if (result.error) {
-      toast.error(result.error.message ?? "Google sign-in failed");
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin + "/auth/callback" },
+      });
+      if (error) throw error;
+      // Browser is redirecting to Google. Keep busy state true.
+    } catch (err: any) {
+      toast.error(err?.message ?? "Google sign-in failed");
       setBusy(false);
-      return;
     }
-    if (result.redirected) return;
-    window.location.replace("/app");
   };
 
   return (
@@ -96,16 +118,20 @@ function LoginPage() {
           </div>
 
           <form onSubmit={submit} className="space-y-3">
-            <input type="email" required value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="Email"
+            <input type="email" required autoComplete="email" value={email} onChange={(e)=>setEmail(e.target.value)} placeholder="Email"
               className="w-full rounded-xl bg-input border border-border px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring transition" />
-            <input type="password" required minLength={6} value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="Password"
+            <input type="password" required minLength={6} autoComplete={mode === "signin" ? "current-password" : "new-password"} value={password} onChange={(e)=>setPassword(e.target.value)} placeholder="Password"
               className="w-full rounded-xl bg-input border border-border px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring transition" />
+            {mode === "signup" && (
+              <input type="password" required minLength={6} autoComplete="new-password" value={confirmPassword} onChange={(e)=>setConfirmPassword(e.target.value)} placeholder="Confirm password"
+                className="w-full rounded-xl bg-input border border-border px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-ring transition" />
+            )}
             <button type="submit" disabled={busy} className="btn-chunk w-full rounded-xl grad-electric text-white px-4 py-3.5 text-sm font-bold shadow-[var(--shadow-violet)] disabled:opacity-50">
               {busy ? "..." : mode === "signin" ? "Sign in" : "Create account"}
             </button>
           </form>
 
-          <button onClick={()=>setMode(mode==="signin"?"signup":"signin")} className="mt-4 w-full text-xs text-muted-foreground hover:text-foreground">
+          <button onClick={()=>{ setMode(mode==="signin"?"signup":"signin"); setConfirmPassword(""); }} className="mt-4 w-full text-xs text-muted-foreground hover:text-foreground">
             {mode==="signin" ? "No account? Sign up" : "Have an account? Sign in"}
           </button>
         </div>
