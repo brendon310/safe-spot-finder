@@ -15,20 +15,24 @@ export const getPeakStatus = createServerFn({ method: "GET" })
 export const markPeakReached = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    // Only set if not already set — keep the first-ever moment.
+    // Atomic: only set if currently NULL — race-free.
+    const now = new Date().toISOString();
+    const { data: updated, error } = await context.supabase
+      .from("profiles")
+      .update({ peak_reached_at: now })
+      .eq("id", context.userId)
+      .is("peak_reached_at", null)
+      .select("peak_reached_at")
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (updated?.peak_reached_at) {
+      return { peakReachedAt: updated.peak_reached_at as string, firstTime: true };
+    }
+    // Already set — fetch existing.
     const { data: existing } = await context.supabase
       .from("profiles")
       .select("peak_reached_at")
       .eq("id", context.userId)
       .maybeSingle();
-    if (existing?.peak_reached_at) {
-      return { peakReachedAt: existing.peak_reached_at as string, firstTime: false };
-    }
-    const now = new Date().toISOString();
-    const { error } = await context.supabase
-      .from("profiles")
-      .update({ peak_reached_at: now })
-      .eq("id", context.userId);
-    if (error) throw new Error(error.message);
-    return { peakReachedAt: now, firstTime: true };
+    return { peakReachedAt: (existing?.peak_reached_at as string) ?? now, firstTime: false };
   });
