@@ -35,8 +35,8 @@ function Landing() {
             Built for the version of you that's already begun.
           </p>
           <div className="mt-12 flex flex-wrap items-center gap-5">
-            <Link to="/app" className="btn-chunk group inline-flex items-center gap-2 rounded-full grad-electric px-8 py-4 text-sm font-bold text-white shadow-[var(--shadow-violet)]">
-              Explore the demo <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition" />
+            <Link to="/begin" className="btn-chunk group inline-flex items-center gap-2 rounded-full grad-electric px-8 py-4 text-sm font-bold text-white shadow-[var(--shadow-violet)]">
+              Begin <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition" />
             </Link>
             <span className="text-sm text-muted-foreground">
               Read-only · everything you see is shared
