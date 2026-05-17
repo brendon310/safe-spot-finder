@@ -9,11 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as BeginRouteImport } from './routes/begin'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AuthenticatedTracksRouteImport } from './routes/_authenticated/tracks'
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedOnboardingRouteImport } from './routes/_authenticated/onboarding'
@@ -21,16 +18,6 @@ import { Route as AuthenticatedInsightsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAppRouteImport } from './routes/_authenticated/app'
 import { Route as AuthenticatedTrackSlugRouteImport } from './routes/_authenticated/track.$slug'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BeginRoute = BeginRouteImport.update({
-  id: '/begin',
-  path: '/begin',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedRoute = AuthenticatedRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -38,11 +25,6 @@ const AuthenticatedRoute = AuthenticatedRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/auth/callback',
-  path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedTracksRoute = AuthenticatedTracksRouteImport.update({
@@ -78,106 +60,71 @@ const AuthenticatedTrackSlugRoute = AuthenticatedTrackSlugRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/begin': typeof BeginRoute
-  '/login': typeof LoginRoute
   '/app': typeof AuthenticatedAppRoute
   '/insights': typeof AuthenticatedInsightsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/tracks': typeof AuthenticatedTracksRoute
-  '/auth/callback': typeof AuthCallbackRoute
   '/track/$slug': typeof AuthenticatedTrackSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/begin': typeof BeginRoute
-  '/login': typeof LoginRoute
   '/app': typeof AuthenticatedAppRoute
   '/insights': typeof AuthenticatedInsightsRoute
   '/onboarding': typeof AuthenticatedOnboardingRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/tracks': typeof AuthenticatedTracksRoute
-  '/auth/callback': typeof AuthCallbackRoute
   '/track/$slug': typeof AuthenticatedTrackSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
-  '/begin': typeof BeginRoute
-  '/login': typeof LoginRoute
   '/_authenticated/app': typeof AuthenticatedAppRoute
   '/_authenticated/insights': typeof AuthenticatedInsightsRoute
   '/_authenticated/onboarding': typeof AuthenticatedOnboardingRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/tracks': typeof AuthenticatedTracksRoute
-  '/auth/callback': typeof AuthCallbackRoute
   '/_authenticated/track/$slug': typeof AuthenticatedTrackSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/begin'
-    | '/login'
     | '/app'
     | '/insights'
     | '/onboarding'
     | '/settings'
     | '/tracks'
-    | '/auth/callback'
     | '/track/$slug'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/begin'
-    | '/login'
     | '/app'
     | '/insights'
     | '/onboarding'
     | '/settings'
     | '/tracks'
-    | '/auth/callback'
     | '/track/$slug'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
-    | '/begin'
-    | '/login'
     | '/_authenticated/app'
     | '/_authenticated/insights'
     | '/_authenticated/onboarding'
     | '/_authenticated/settings'
     | '/_authenticated/tracks'
-    | '/auth/callback'
     | '/_authenticated/track/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRoute: typeof AuthenticatedRouteWithChildren
-  BeginRoute: typeof BeginRoute
-  LoginRoute: typeof LoginRoute
-  AuthCallbackRoute: typeof AuthCallbackRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/begin': {
-      id: '/begin'
-      path: '/begin'
-      fullPath: '/begin'
-      preLoaderRoute: typeof BeginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -190,13 +137,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth/callback': {
-      id: '/auth/callback'
-      path: '/auth/callback'
-      fullPath: '/auth/callback'
-      preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/tracks': {
@@ -269,10 +209,17 @@ const AuthenticatedRouteWithChildren = AuthenticatedRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRoute: AuthenticatedRouteWithChildren,
-  BeginRoute: BeginRoute,
-  LoginRoute: LoginRoute,
-  AuthCallbackRoute: AuthCallbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
