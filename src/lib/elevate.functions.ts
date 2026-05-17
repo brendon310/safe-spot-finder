@@ -1,7 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
+import { generateText } from "ai";
 import { checkContent } from "./profanity-filter";
+import { createLovableAiModel } from "@/lib/ai-gateway";
 import { withArchetype, archetypeForSlug } from "@/lib/coach-archetypes";
 
 export const listCatalog = createServerFn({ method: "GET" })
@@ -322,24 +324,17 @@ export const getInsightsData = createServerFn({ method: "GET" })
 const CHUNK_SIZE = 10;
 const MILESTONES = [1, 3, 7, 14, 21, 30, 60, 90, 180, 365];
 
-const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const aiHeaders = (key: string) => ({
-  "Authorization": `Bearer ${key}`,
-  "content-type": "application/json",
-});
-
 async function anthropicJSON(
   key: string, system: string, user: string,
   model = "claude-haiku-4-5-20251001", maxTokens = 1024,
 ): Promise<any> {
-  const res = await fetch(AI_GATEWAY_URL, {
-    method: "POST",
-    headers: aiHeaders(key),
-    body: JSON.stringify({ model: "google/gemini-2.5-flash", max_tokens: maxTokens, messages: [{ role: "system", content: system }, { role: "user", content: user }] }),
+  const { text } = await generateText({
+    model: createLovableAiModel(key, model),
+    maxOutputTokens: maxTokens,
+    system,
+    prompt: user,
   });
-  if (!res.ok) throw new Error(`AI ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const j = await res.json();
-  const txt: string = j.choices?.[0]?.message?.content ?? "{}";
+  const txt: string = text || "{}";
   try { return JSON.parse(txt); } catch { return JSON.parse(txt.replace(/^```json\s*|```$/g, "")); }
 }
 
