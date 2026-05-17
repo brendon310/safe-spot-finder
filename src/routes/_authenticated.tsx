@@ -1,12 +1,21 @@
-import { createFileRoute, Outlet, useNavigate, Link, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, Link, useLocation, redirect } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { activateTracks } from "@/lib/elevate.functions";
 import { Home, Layers, BarChart3, Settings, Sparkles, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/_authenticated")({ component: Layout });
+export const Route = createFileRoute("/_authenticated")({
+  beforeLoad: async ({ location }) => {
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
+      throw redirect({ to: "/login", search: { redirect: location.href } });
+    }
+  },
+  component: Layout,
+});
 
 function Layout() {
   const { user, loading, signOut } = useAuth();
@@ -15,7 +24,6 @@ function Layout() {
   const activate = useServerFn(activateTracks);
   const qc = useQueryClient();
   const draining = useRef(false);
-  useEffect(() => { if (!loading && !user) nav({ to: "/login" }); }, [user, loading, nav]);
 
   // Drain pending pre-auth onboarding (from /begin) once signed in.
   useEffect(() => {
