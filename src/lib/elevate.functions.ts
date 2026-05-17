@@ -397,7 +397,7 @@ export const startJourney = createServerFn({ method: "POST" })
     obstacle: z.string().max(400).default(""),
   }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("AI is not configured");
 
     // Ensure user_track
@@ -454,7 +454,7 @@ export const ensureDaysGenerated = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ journeyId: z.string().uuid(), throughDay: z.number().int().min(1).max(365) }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("AI is not configured");
     const { data: jr } = await context.supabase.from("journeys").select("*").eq("id", data.journeyId).eq("user_id", context.userId).single();
     if (!jr) throw new Error("Journey not found");
@@ -546,7 +546,7 @@ export const getReEntryMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ slug: z.string(), missedDays: z.number().int().min(1).max(60) }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     if (!key) return { message: "You missed some days. That's part of every real journey. The only failure is not coming back. Start with one small action today." };
     const { data: cat } = await context.supabase.from("tracks_catalog").select("name,ai_system_prompt").eq("slug", data.slug).single();
     if (!cat) throw new Error("Track not found");
@@ -564,7 +564,7 @@ export const getMilestoneMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ slug: z.string(), dayNumber: z.number().int().min(1).max(365) }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     const { data: cat } = await context.supabase.from("tracks_catalog").select("name,ai_system_prompt").eq("slug", data.slug).single();
     if (!cat) throw new Error("Track not found");
     if (!key) return { message: `Day ${data.dayNumber} reached.`, science: "" };
@@ -699,7 +699,7 @@ export const validateCheckin = createServerFn({ method: "POST" })
     if (trimmed.length < 8) {
       return { valid: false, reason: "Too short to be a real reflection." };
     }
-    const key = process.env.ANTHROPIC_API_KEY;
+    const key = process.env.LOVABLE_API_KEY;
     if (!key) return { valid: true, reason: "" };
     const { data: cat } = await context.supabase
       .from("tracks_catalog").select("name").eq("slug", data.slug).single();
