@@ -1,25 +1,37 @@
-import { createFileRoute, Outlet, useNavigate, Link, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Outlet, useNavigate, Link, useLocation, redirect } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { activateTracks } from "@/lib/elevate.functions";
 import { Home, Layers, BarChart3, Settings, Sparkles, LogOut } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 
-export const Route = createFileRoute("/_authenticated")({ component: Layout });
+export const Route = createFileRoute("/_authenticated")({
+  beforeLoad: async ({ location }) => {
+    if (typeof window === "undefined") return;
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) {
+      throw redirect({ to: "/login", search: { redirect: location.href } });
+    }
+    return { authUser: data.user };
+  },
+  component: Layout,
+});
 
 function Layout() {
-  const { user, loading, signOut } = useAuth();
+  const { user, signOut } = useAuth();
+  const { authUser } = Route.useRouteContext();
+  const activeUser = user ?? authUser ?? null;
   const nav = useNavigate();
   const loc = useLocation();
   const activate = useServerFn(activateTracks);
   const qc = useQueryClient();
   const draining = useRef(false);
-  useEffect(() => { if (!loading && !user) nav({ to: "/login" }); }, [user, loading, nav]);
 
   // Drain pending pre-auth onboarding (from /begin) once signed in.
   useEffect(() => {
-    if (!user || draining.current) return;
+    if (!activeUser || draining.current) return;
     let raw: string | null = null;
     try { raw = localStorage.getItem("pending_onboarding"); } catch {}
     if (!raw) return;
@@ -45,9 +57,7 @@ function Layout() {
         localStorage.removeItem("pending_onboarding");
       }
     })();
-  }, [user, activate, nav, qc]);
-
-  if (loading || !user) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
+  }, [activeUser, activate, nav, qc]);
 
   const navItems = [
     { to: "/app", icon: Home, label: "Home" },

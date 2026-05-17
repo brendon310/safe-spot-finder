@@ -20,10 +20,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(s);
       setLoading(false);
     });
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setLoading(false);
-    });
+
+    const cleanOAuthUrl = () => {
+      const url = new URL(window.location.href);
+      url.hash = "";
+      ["access_token", "refresh_token", "expires_in", "expires_at", "token_type", "type", "provider_token", "provider_refresh_token", "state", "code", "error", "error_description"].forEach((key) => {
+        url.searchParams.delete(key);
+      });
+      window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    };
+
+    const finishInitialAuth = async () => {
+      try {
+        const url = new URL(window.location.href);
+        const hashParams = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : "");
+        const tokenParams = hashParams.has("access_token") ? hashParams : url.searchParams;
+        const accessToken = tokenParams.get("access_token");
+        const refreshToken = tokenParams.get("refresh_token");
+
+        if (accessToken && refreshToken) {
+          const { data, error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+          if (error) throw error;
+          setSession(data.session);
+          cleanOAuthUrl();
+          return;
+        }
+
+        const code = url.searchParams.get("code");
+        if (code && url.pathname === "/auth/callback") {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error) throw error;
+          setSession(data.session);
+          cleanOAuthUrl();
+          return;
+        }
+
+        const { data } = await supabase.auth.getSession();
+        setSession(data.session);
+      } catch {
+        setSession(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void finishInitialAuth();
     return () => subscription.unsubscribe();
   }, []);
 
