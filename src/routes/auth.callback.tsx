@@ -31,7 +31,7 @@ function AuthCallback() {
           nav({ to: "/login" });
           return;
         }
-        nav({ to: "/app" });
+        window.location.replace("/app");
         return;
       }
 
@@ -60,7 +60,7 @@ function AuthCallback() {
           nav({ to: "/login" });
           return;
         }
-        nav({ to: "/app" });
+        window.location.replace("/app");
         return;
       }
 
