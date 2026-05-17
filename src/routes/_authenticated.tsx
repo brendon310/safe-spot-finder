@@ -20,7 +20,7 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 function Layout() {
-  const { user, loading, signOut } = useAuth();
+  const { user, signOut } = useAuth();
   const { authUser } = Route.useRouteContext();
   const activeUser = user ?? authUser ?? null;
   const nav = useNavigate();
@@ -58,8 +58,6 @@ function Layout() {
       }
     })();
   }, [activeUser, activate, nav, qc]);
-
-  if (loading && !activeUser) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
 
   const navItems = [
     { to: "/app", icon: Home, label: "Home" },
