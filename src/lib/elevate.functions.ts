@@ -3,7 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { checkContent } from "./profanity-filter";
 import { anthropicText, anthropicJSON } from "@/lib/anthropic";
-import { withArchetype, archetypeForSlug } from "@/lib/coach-archetypes";
+import { withArchetype } from "@/lib/coach-archetypes";
 
 export const listCatalog = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -56,10 +56,35 @@ export const activateTracks = createServerFn({ method: "POST" })
     }).optional(),
   }).parse(d))
   .handler(async ({ data, context }) => {
-    const intake = data.contract ? { contract: { ...data.contract, signed_at: data.contract.signed_at ?? new Date().toISOString() } } : undefined;
-    const rows = data.trackIds.map((track_id) => ({ user_id: context.userId, track_id, ...(intake ? { intake } : {}) }));
-    const { error } = await context.supabase.from("user_tracks").upsert(rows, { onConflict: "user_id,track_id", ignoreDuplicates: true });
-    if (error) throw new Error(error.message);
+    const intake = data.contract
+      ? { contract: { ...data.contract, signed_at: data.contract.signed_at ?? new Date().toISOString() } }
+      : undefined;
+
+    // Find which tracks the user already has.
+    const { data: existing } = await context.supabase
+      .from("user_tracks")
+      .select("id,track_id,intake")
+      .eq("user_id", context.userId)
+      .in("track_id", data.trackIds);
+    const existingByTrackId = new Map((existing ?? []).map((r) => [r.track_id, r]));
+
+    // Insert missing rows with intake.
+    const missing = data.trackIds.filter((id) => !existingByTrackId.has(id));
+    if (missing.length) {
+      const rows = missing.map((track_id) => ({
+        user_id: context.userId, track_id, ...(intake ? { intake } : {}),
+      }));
+      const { error } = await context.supabase.from("user_tracks").insert(rows);
+      if (error) throw new Error(error.message);
+    }
+
+    // Backfill intake on existing rows that don't have one yet (don't overwrite).
+    if (intake) {
+      const toBackfill = (existing ?? []).filter((r) => !r.intake);
+      for (const row of toBackfill) {
+        await context.supabase.from("user_tracks").update({ intake }).eq("id", row.id);
+      }
+    }
     return { ok: true };
   });
 
@@ -157,15 +182,19 @@ export const sendCoachMessage = createServerFn({ method: "POST" })
 
     const { data: history } = await context.supabase
       .from("track_messages").select("role,content")
-      .eq("user_track_id", data.userTrackId).order("created_at").limit(40);
+      .eq("user_track_id", data.userTrackId)
+      .order("created_at", { ascending: false })
+      .limit(40);
 
     await context.supabase.from("track_messages").insert({
       user_id: context.userId, user_track_id: data.userTrackId, role: "user", content: data.content,
     });
 
     const systemPrompt = withArchetype(ut.track.slug, ut.track.ai_system_prompt) + `\n\nUser's current streak: ${ut.current_streak} days. Longest: ${ut.longest_streak}.${(() => { const c: any = (ut.intake as any)?.contract; return c?.answer ? `\n\nThe user's transformation contract said: "${c.answer}". Identity: "${c.identity ?? ""}". Reference it gently when meaningful.` : ""; })()}`;
+    // history came in newest-first; reverse to chronological for the model.
+    const chrono = [...(history ?? [])].reverse();
     const chatMessages = [
-      ...(history ?? []).map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content as string })),
+      ...chrono.map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content as string })),
       { role: "user" as const, content: data.content },
     ];
     const reply = await anthropicText(key, systemPrompt, chatMessages, "claude-haiku-4-5", 1024);
@@ -186,8 +215,11 @@ export const generateWeeklyInsight = createServerFn({ method: "POST" })
     const { data: tracks } = await context.supabase
       .from("user_tracks").select("current_streak,longest_streak,track:tracks_catalog(name,category)")
       .eq("user_id", context.userId);
-    // Cache key is the current date — refreshes automatically the next day.
-    const weekStart = new Date().toISOString().slice(0, 10);
+    // Real Monday-anchored ISO week start (UTC).
+    const now = new Date();
+    const dow = (now.getUTCDay() + 6) % 7; // 0 = Mon
+    const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - dow));
+    const weekStart = monday.toISOString().slice(0, 10);
     const sinceISO = new Date(Date.now() - 7 * 86400000).toISOString().slice(0,10);
     const { data: logs } = await context.supabase
       .from("track_logs").select("log_date,completed,mood,note,user_track:user_tracks(track:tracks_catalog(name))")
@@ -480,6 +512,16 @@ export const completeJourneyDay = createServerFn({ method: "POST" })
     const { data: day } = await context.supabase.from("journey_days").select("*, journey:journeys(*)").eq("id", data.dayId).eq("user_id", context.userId).single();
     if (!day) throw new Error("Day not found");
     if (day.completed_at) return { ok: true, alreadyDone: true };
+    // Block completing future days — must be the next un-completed day.
+    const { data: doneRows } = await context.supabase
+      .from("journey_days")
+      .select("day_number")
+      .eq("journey_id", day.journey.id)
+      .not("completed_at", "is", null);
+    const completedCount = doneRows?.length ?? 0;
+    if (day.day_number !== completedCount + 1) {
+      throw new Error("Complete previous days first.");
+    }
     await context.supabase.from("journey_days").update({ completed_at: new Date().toISOString(), user_note: data.note ?? null }).eq("id", data.dayId);
     // log + streak via logCheckIn logic inlined
     const today = new Date().toISOString().slice(0, 10);
