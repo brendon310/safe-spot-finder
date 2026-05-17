@@ -343,14 +343,13 @@ async function anthropicText(
   messages: { role: "user" | "assistant"; content: string }[],
   model = "claude-sonnet-4-6", maxTokens = 1024,
 ): Promise<string> {
-  const res = await fetch(AI_GATEWAY_URL, {
-    method: "POST",
-    headers: aiHeaders(key),
-    body: JSON.stringify({ model: "google/gemini-2.5-flash", max_tokens: maxTokens, messages: [{ role: "system", content: system }, ...messages] }),
+  const { text } = await generateText({
+    model: createLovableAiModel(key, model),
+    maxOutputTokens: maxTokens,
+    system,
+    messages,
   });
-  if (!res.ok) throw new Error(`AI ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const j = await res.json();
-  return j.choices?.[0]?.message?.content ?? "";
+  return text ?? "";
 }
 
 async function generateDaysChunk(opts: {
