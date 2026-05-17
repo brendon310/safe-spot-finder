@@ -1,63 +1,12 @@
-import { createFileRoute, Outlet, useNavigate, Link, useLocation, redirect } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
-import { useServerFn } from "@tanstack/react-start";
-import { useQueryClient } from "@tanstack/react-query";
-import { activateTracks } from "@/lib/elevate.functions";
-import { Home, Layers, BarChart3, Settings, Sparkles, LogOut } from "lucide-react";
-import { useAuth } from "@/lib/auth";
-import { supabase } from "@/integrations/supabase/client";
+import { createFileRoute, Outlet, Link, useLocation } from "@tanstack/react-router";
+import { Home, Layers, BarChart3, Settings, Sparkles, Eye } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
-  beforeLoad: async ({ location }) => {
-    if (typeof window === "undefined") return;
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) {
-      throw redirect({ to: "/login", search: { redirect: location.href } });
-    }
-    return { authUser: data.user };
-  },
   component: Layout,
 });
 
 function Layout() {
-  const { user, signOut } = useAuth();
-  const { authUser } = Route.useRouteContext();
-  const activeUser = user ?? authUser ?? null;
-  const nav = useNavigate();
   const loc = useLocation();
-  const activate = useServerFn(activateTracks);
-  const qc = useQueryClient();
-  const draining = useRef(false);
-
-  // Drain pending pre-auth onboarding (from /begin) once signed in.
-  useEffect(() => {
-    if (!activeUser || draining.current) return;
-    let raw: string | null = null;
-    try { raw = localStorage.getItem("pending_onboarding"); } catch {}
-    if (!raw) return;
-    draining.current = true;
-    let p: any;
-    try { p = JSON.parse(raw); } catch { localStorage.removeItem("pending_onboarding"); return; }
-    if (!p?.trackId || !p?.slug) { localStorage.removeItem("pending_onboarding"); return; }
-    (async () => {
-      try {
-        await activate({ data: {
-          trackIds: [p.trackId],
-          contract: {
-            answer: p.answer,
-            identity: p.name ? `${p.name} — committed to ${p.trackName}` : undefined,
-            commitment: `I, ${p.name}, commit to ${p.trackName}. Starting today. One day at a time.`,
-            signed_at: p.signed_at,
-          },
-        } });
-        localStorage.removeItem("pending_onboarding");
-        await qc.invalidateQueries({ queryKey: ["userTracks"] });
-        nav({ to: "/track/$slug", params: { slug: p.slug } });
-      } catch {
-        localStorage.removeItem("pending_onboarding");
-      }
-    })();
-  }, [activeUser, activate, nav, qc]);
 
   const navItems = [
     { to: "/app", icon: Home, label: "Home" },
@@ -83,9 +32,9 @@ function Layout() {
             );
           })}
         </nav>
-        <button onClick={()=>signOut().then(()=>nav({to:"/"}))} className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground">
-          <LogOut className="h-4 w-4" /> Sign out
-        </button>
+        <div className="flex items-center gap-2 rounded-lg px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-muted-foreground font-mono border border-border">
+          <Eye className="h-3.5 w-3.5" /> Demo mode
+        </div>
       </aside>
 
       <main className="md:ml-60 pb-24 md:pb-8">
