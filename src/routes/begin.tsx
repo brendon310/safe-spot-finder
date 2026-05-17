@@ -54,16 +54,7 @@ function BeginFlow() {
 
   const proceedToAuth = () => {
     if (!chosen) return;
-    const payload = {
-      trackId: chosen.id,
-      slug: chosen.slug,
-      trackName: chosen.name,
-      answer,
-      name: name.trim(),
-      signed_at: new Date().toISOString(),
-    };
-    try { localStorage.setItem("pending_onboarding", JSON.stringify(payload)); } catch {}
-    nav({ to: "/login" });
+    nav({ to: "/app" });
   };
 
   const grouped = useMemo(() => {
