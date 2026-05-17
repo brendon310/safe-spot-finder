@@ -83,7 +83,7 @@ function RootComponent() {
         <div className="mesh-bg" aria-hidden />
         <div className="grain-overlay" aria-hidden />
         <Outlet />
-        <Toaster theme="dark" position="top-center" />
+        <Toaster theme="system" position="top-center" />
       </AuthProvider>
     </QueryClientProvider>
   );
