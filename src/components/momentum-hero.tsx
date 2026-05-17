@@ -14,6 +14,7 @@ import {
   type TrackLike,
 } from "@/lib/momentum";
 import { getPeakStatus, markPeakReached } from "@/lib/peak.functions";
+import { useAuth } from "@/lib/auth";
 
 function useCountUp(target: number, duration = 900) {
   const [v, setV] = useState(0);
@@ -53,6 +54,7 @@ function fireConfetti() {
 }
 
 export function MomentumHero({ tracks }: { tracks: TrackLike[] }) {
+  const { user, loading } = useAuth();
   const m = computeMomentum(tracks);
   const evo = evolutionFor(maxStreak(tracks));
   const inFlow = detectFlow(tracks);
@@ -68,6 +70,7 @@ export function MomentumHero({ tracks }: { tracks: TrackLike[] }) {
   const { data: peak } = useQuery({
     queryKey: ["peak-status"],
     queryFn: () => fetchPeak(),
+    enabled: !loading && !!user,
     staleTime: 60_000,
   });
   const hasPeakBadge = !!peak?.peakReachedAt;
