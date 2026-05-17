@@ -14,12 +14,15 @@ export const Route = createFileRoute("/_authenticated")({
     if (error || !data.user) {
       throw redirect({ to: "/login", search: { redirect: location.href } });
     }
+    return { authUser: data.user };
   },
   component: Layout,
 });
 
 function Layout() {
   const { user, loading, signOut } = useAuth();
+  const { authUser } = Route.useRouteContext();
+  const activeUser = user ?? authUser ?? null;
   const nav = useNavigate();
   const loc = useLocation();
   const activate = useServerFn(activateTracks);
@@ -28,7 +31,7 @@ function Layout() {
 
   // Drain pending pre-auth onboarding (from /begin) once signed in.
   useEffect(() => {
-    if (!user || draining.current) return;
+    if (!activeUser || draining.current) return;
     let raw: string | null = null;
     try { raw = localStorage.getItem("pending_onboarding"); } catch {}
     if (!raw) return;
@@ -54,9 +57,9 @@ function Layout() {
         localStorage.removeItem("pending_onboarding");
       }
     })();
-  }, [user, activate, nav, qc]);
+  }, [activeUser, activate, nav, qc]);
 
-  if (loading || !user) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
+  if (loading && !activeUser) return <div className="min-h-screen flex items-center justify-center text-muted-foreground">Loading…</div>;
 
   const navItems = [
     { to: "/app", icon: Home, label: "Home" },
