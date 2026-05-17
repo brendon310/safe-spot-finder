@@ -1,9 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { generateText } from "ai";
 import { checkContent } from "./profanity-filter";
-import { createLovableAiModel } from "@/lib/ai-gateway";
+import { anthropicText, anthropicJSON } from "@/lib/anthropic";
 import { withArchetype, archetypeForSlug } from "@/lib/coach-archetypes";
 
 export const listCatalog = createServerFn({ method: "GET" })
@@ -19,7 +18,7 @@ export const suggestTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ answer: z.string().min(3).max(800) }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env.ANTHROPIC_API_KEY;
     if (!key) throw new Error("AI is not configured");
     const { data: catalog } = await context.supabase
       .from("tracks_catalog").select("slug,name,category,short_description").order("sort_order");
@@ -148,7 +147,7 @@ export const sendCoachMessage = createServerFn({ method: "POST" })
     content: z.string().min(1).max(4000),
   }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env.ANTHROPIC_API_KEY;
     if (!key) throw new Error("AI is not configured");
 
     const { data: ut } = await context.supabase
@@ -169,7 +168,7 @@ export const sendCoachMessage = createServerFn({ method: "POST" })
       ...(history ?? []).map((m: any) => ({ role: m.role as "user" | "assistant", content: m.content as string })),
       { role: "user" as const, content: data.content },
     ];
-    const reply = await anthropicText(key, systemPrompt, chatMessages, "claude-sonnet-4-6", 1024);
+    const reply = await anthropicText(key, systemPrompt, chatMessages, "claude-haiku-4-5", 1024);
 
     await context.supabase.from("track_messages").insert({
       user_id: context.userId, user_track_id: data.userTrackId, role: "assistant", content: reply,
@@ -181,7 +180,7 @@ export const sendCoachMessage = createServerFn({ method: "POST" })
 export const generateWeeklyInsight = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env.ANTHROPIC_API_KEY;
     if (!key) throw new Error("AI is not configured");
 
     const { data: tracks } = await context.supabase
@@ -199,7 +198,7 @@ export const generateWeeklyInsight = createServerFn({ method: "POST" })
       key,
       "You are the Elevate weekly insight coach — warm, sharp, specific. Output MARKDOWN with EXACTLY these three H3 sections in order, no preamble, no closing:\n\n### Strongest\n2–3 sentences naming the most consistent behavior, with a number (streak/days). Reference the track by name.\n\n### Struggled\n2–3 sentences naming the weakest pattern honestly. No shame. Use concrete observations.\n\n### Try this week\nA short intro sentence, then 3 bullet points starting with '- '. Each bullet = one concrete, specific micro-action for the coming week tied to their data.\n\nRules: under 220 words total. Use **bold** for emphasis on key words. Never use emojis. Never invent data not present.",
       [{ role: "user", content: summary }],
-      "claude-sonnet-4-6",
+      "claude-haiku-4-5",
       512,
     );
     await context.supabase.from("insights").upsert(
@@ -324,34 +323,6 @@ export const getInsightsData = createServerFn({ method: "GET" })
 const CHUNK_SIZE = 10;
 const MILESTONES = [1, 3, 7, 14, 21, 30, 60, 90, 180, 365];
 
-async function anthropicJSON(
-  key: string, system: string, user: string,
-  model = "claude-haiku-4-5-20251001", maxTokens = 1024,
-): Promise<any> {
-  const { text } = await generateText({
-    model: createLovableAiModel(key, model),
-    maxOutputTokens: maxTokens,
-    system,
-    prompt: user,
-  });
-  const txt: string = text || "{}";
-  try { return JSON.parse(txt); } catch { return JSON.parse(txt.replace(/^```json\s*|```$/g, "")); }
-}
-
-async function anthropicText(
-  key: string, system: string,
-  messages: { role: "user" | "assistant"; content: string }[],
-  model = "claude-sonnet-4-6", maxTokens = 1024,
-): Promise<string> {
-  const { text } = await generateText({
-    model: createLovableAiModel(key, model),
-    maxOutputTokens: maxTokens,
-    system,
-    messages,
-  });
-  return text ?? "";
-}
-
 async function generateDaysChunk(opts: {
   key: string;
   trackName: string;
@@ -376,7 +347,7 @@ Rules:
 - Increase complexity and depth as day_number rises.
 - Reference the user's obstacle when relevant.
 - Tone: warm, expert, never preachy. No emojis.`;
-  const out = await anthropicJSON(opts.key, system, `Generate days ${opts.fromDay}-${opts.toDay} as JSON.`, "claude-sonnet-4-6", 4096);
+  const out = await anthropicJSON(opts.key, system, `Generate days ${opts.fromDay}-${opts.toDay} as JSON.`, "claude-haiku-4-5", 4096);
   const days: any[] = Array.isArray(out?.days) ? out.days : [];
   return days.filter(d => d && typeof d.day_number === "number" && d.day_number >= opts.fromDay && d.day_number <= opts.toDay);
 }
@@ -391,7 +362,7 @@ export const startJourney = createServerFn({ method: "POST" })
     obstacle: z.string().max(400).default(""),
   }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env.ANTHROPIC_API_KEY;
     if (!key) throw new Error("AI is not configured");
 
     // Ensure user_track
@@ -448,7 +419,7 @@ export const ensureDaysGenerated = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ journeyId: z.string().uuid(), throughDay: z.number().int().min(1).max(365) }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env.ANTHROPIC_API_KEY;
     if (!key) throw new Error("AI is not configured");
     const { data: jr } = await context.supabase.from("journeys").select("*").eq("id", data.journeyId).eq("user_id", context.userId).single();
     if (!jr) throw new Error("Journey not found");
@@ -540,7 +511,7 @@ export const getReEntryMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ slug: z.string(), missedDays: z.number().int().min(1).max(60) }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env.ANTHROPIC_API_KEY;
     if (!key) return { message: "You missed some days. That's part of every real journey. The only failure is not coming back. Start with one small action today." };
     const { data: cat } = await context.supabase.from("tracks_catalog").select("name,ai_system_prompt").eq("slug", data.slug).single();
     if (!cat) throw new Error("Track not found");
@@ -548,7 +519,7 @@ export const getReEntryMessage = createServerFn({ method: "POST" })
       key,
       cat.ai_system_prompt + "\n\nWrite a 3-4 sentence re-entry message: no shame, normalize the gap, give one concrete tiny re-entry action specific to this track.",
       [{ role: "user", content: `The user missed ${data.missedDays} day(s) on the "${cat.name}" track. Write the re-entry message.` }],
-      "claude-haiku-4-5-20251001",
+      "claude-haiku-4-5",
       256,
     );
     return { message: message || "Welcome back. One small step today." };
@@ -558,7 +529,7 @@ export const getMilestoneMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ slug: z.string(), dayNumber: z.number().int().min(1).max(365) }).parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env.ANTHROPIC_API_KEY;
     const { data: cat } = await context.supabase.from("tracks_catalog").select("name,ai_system_prompt").eq("slug", data.slug).single();
     if (!cat) throw new Error("Track not found");
     if (!key) return { message: `Day ${data.dayNumber} reached.`, science: "" };
@@ -693,7 +664,7 @@ export const validateCheckin = createServerFn({ method: "POST" })
     if (trimmed.length < 8) {
       return { valid: false, reason: "Too short to be a real reflection." };
     }
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env.ANTHROPIC_API_KEY;
     if (!key) return { valid: true, reason: "" };
     const { data: cat } = await context.supabase
       .from("tracks_catalog").select("name").eq("slug", data.slug).single();
@@ -703,7 +674,7 @@ export const validateCheckin = createServerFn({ method: "POST" })
         key,
         "You are a strict but funny check-in validator for a self-improvement app. The user is on a specific journey (provided in context). Evaluate if their response is genuine, relevant, and meaningful. A real response mentions specific situations, feelings, thoughts, or experiences related to their journey. Respond ONLY with a JSON object: {\"valid\": true/false, \"reason\": \"one short sentence explaining why if invalid\"}. Be strict — vague one-word answers, random text, jokes, and nonsense are invalid. A genuine 2-3 sentence personal reflection is valid.",
         `Track: ${trackName}\nDay: ${data.dayNumber}\n\nUser response:\n"""${trimmed}"""`,
-        "claude-haiku-4-5-20251001",
+        "claude-haiku-4-5",
         128,
       );
       return { valid: Boolean(parsed?.valid), reason: String(parsed?.reason ?? "") };
