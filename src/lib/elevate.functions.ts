@@ -323,34 +323,6 @@ export const getInsightsData = createServerFn({ method: "GET" })
 const CHUNK_SIZE = 10;
 const MILESTONES = [1, 3, 7, 14, 21, 30, 60, 90, 180, 365];
 
-async function anthropicJSON(
-  key: string, system: string, user: string,
-  model = "claude-haiku-4-5-20251001", maxTokens = 1024,
-): Promise<any> {
-  const { text } = await generateText({
-    model: createLovableAiModel(key, model),
-    maxOutputTokens: maxTokens,
-    system,
-    prompt: user,
-  });
-  const txt: string = text || "{}";
-  try { return JSON.parse(txt); } catch { return JSON.parse(txt.replace(/^```json\s*|```$/g, "")); }
-}
-
-async function anthropicText(
-  key: string, system: string,
-  messages: { role: "user" | "assistant"; content: string }[],
-  model = "claude-sonnet-4-6", maxTokens = 1024,
-): Promise<string> {
-  const { text } = await generateText({
-    model: createLovableAiModel(key, model),
-    maxOutputTokens: maxTokens,
-    system,
-    messages,
-  });
-  return text ?? "";
-}
-
 async function generateDaysChunk(opts: {
   key: string;
   trackName: string;
