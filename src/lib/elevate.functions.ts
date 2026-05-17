@@ -322,10 +322,9 @@ export const getInsightsData = createServerFn({ method: "GET" })
 const CHUNK_SIZE = 10;
 const MILESTONES = [1, 3, 7, 14, 21, 30, 60, 90, 180, 365];
 
-const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
-const anthropicHeaders = (key: string) => ({
-  "x-api-key": key,
-  "anthropic-version": "2023-06-01",
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const aiHeaders = (key: string) => ({
+  "Authorization": `Bearer ${key}`,
   "content-type": "application/json",
 });
 
@@ -333,14 +332,14 @@ async function anthropicJSON(
   key: string, system: string, user: string,
   model = "claude-haiku-4-5-20251001", maxTokens = 1024,
 ): Promise<any> {
-  const res = await fetch(ANTHROPIC_URL, {
+  const res = await fetch(AI_GATEWAY_URL, {
     method: "POST",
-    headers: anthropicHeaders(key),
-    body: JSON.stringify({ model, max_tokens: maxTokens, system, messages: [{ role: "user", content: user }] }),
+    headers: aiHeaders(key),
+    body: JSON.stringify({ model: "google/gemini-2.5-flash", max_tokens: maxTokens, messages: [{ role: "system", content: system }, { role: "user", content: user }] }),
   });
-  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) throw new Error(`AI ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const j = await res.json();
-  const txt: string = j.content?.[0]?.text ?? "{}";
+  const txt: string = j.choices?.[0]?.message?.content ?? "{}";
   try { return JSON.parse(txt); } catch { return JSON.parse(txt.replace(/^```json\s*|```$/g, "")); }
 }
 
@@ -349,14 +348,14 @@ async function anthropicText(
   messages: { role: "user" | "assistant"; content: string }[],
   model = "claude-sonnet-4-6", maxTokens = 1024,
 ): Promise<string> {
-  const res = await fetch(ANTHROPIC_URL, {
+  const res = await fetch(AI_GATEWAY_URL, {
     method: "POST",
-    headers: anthropicHeaders(key),
-    body: JSON.stringify({ model, max_tokens: maxTokens, system, messages }),
+    headers: aiHeaders(key),
+    body: JSON.stringify({ model: "google/gemini-2.5-flash", max_tokens: maxTokens, messages: [{ role: "system", content: system }, ...messages] }),
   });
-  if (!res.ok) throw new Error(`Anthropic ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) throw new Error(`AI ${res.status}: ${(await res.text()).slice(0, 200)}`);
   const j = await res.json();
-  return j.content?.[0]?.text ?? "";
+  return j.choices?.[0]?.message?.content ?? "";
 }
 
 async function generateDaysChunk(opts: {
