@@ -57,7 +57,7 @@ function LoginPage() {
       return;
     }
     if (result.redirected) return;
-    nav({ to: "/app" });
+    window.location.replace("/app");
   };
 
   return (
