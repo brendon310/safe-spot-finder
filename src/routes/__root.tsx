@@ -46,8 +46,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:title", content: "Elevate — Your AI growth companion" },
       { property: "og:description", content: "50 world-class AI coaches in your pocket. Build habits, quit vices, level up your life." },
       { name: "twitter:description", content: "50 world-class AI coaches in your pocket. Build habits, quit vices, level up your life." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/aaf788e6-d7c3-420c-8730-8d149c5c9c35/id-preview-236f2956--da819383-ea6e-4166-9935-baf63c6be1f0.lovable.app-1778977624057.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/aaf788e6-d7c3-420c-8730-8d149c5c9c35/id-preview-236f2956--da819383-ea6e-4166-9935-baf63c6be1f0.lovable.app-1778977624057.png" },
       { name: "twitter:card", content: "summary_large_image" },
       { property: "og:type", content: "website" },
     ],
@@ -83,7 +81,7 @@ function RootComponent() {
         <div className="mesh-bg" aria-hidden />
         <div className="grain-overlay" aria-hidden />
         <Outlet />
-        <Toaster theme="system" position="top-center" />
+        <Toaster theme="dark" position="top-center" />
       </AuthProvider>
     </QueryClientProvider>
   );
