@@ -38,7 +38,7 @@ if (existsSync(serverEntry)) {
   console.log('\u2713 Bundled server with esbuild');
 }
 
-// Create Vercel Node.js handler wrapper (CommonJS -- works with CJS bundle)
+// Create Vercel Node.js handler wrapper (CJS, raw http.ServerResponse API)
 const handlerCode = `'use strict';
 const bundle = require('./server-bundle.js');
 const server = bundle.default || bundle;
@@ -60,7 +60,7 @@ module.exports = async function handler(req, res) {
       waitUntil: () => {},
       passThroughOnException: () => {},
     });
-    res.status(resp.status);
+    res.statusCode = resp.status;
     const setCookies =
       typeof resp.headers.getSetCookie === 'function'
         ? resp.headers.getSetCookie()
@@ -75,7 +75,7 @@ module.exports = async function handler(req, res) {
     res.end(Buffer.from(buf));
   } catch (err) {
     console.error('SSR error:', err);
-    res.status(500).end('Internal Server Error');
+    res.statusCode = 500; res.end('Internal Server Error');
   }
 };
 `;
