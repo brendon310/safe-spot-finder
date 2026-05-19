@@ -9,8 +9,8 @@ import type { Database } from './types'
 export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
     
-    const SUPABASE_URL = process.env.SUPABASE_URL || 'https://kytfgpljksqlrannvcil.supabase.co';
-    const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6Imt5dGZncGxqa3NxbHJhbm52Y2lsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg5MDgxNTMsImV4cCI6MjA5NDQ4NDE1M30.gCRzR05NBERc3XJxnXdtKDasSAYFoP1RJgrKiYcJ9Bg';
+    const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || 'https://wzyctjiukylkphjjjxyf.supabase.co';
+    const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_G8CR4owT28Tv0KNSxfYcGw_uCTR7UTF';
     
     const request = getRequest();
 
