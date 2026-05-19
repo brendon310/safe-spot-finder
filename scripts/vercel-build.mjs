@@ -32,7 +32,7 @@ if (existsSync(serverEntry)) {
   const esbuildBin = `${root}/node_modules/.bin/esbuild`;
   const bundleOut = `${out}/functions/index.func/server-bundle.js`;
   execSync(
-    `"${esbuildBin}" "${serverEntry}" --bundle --platform=node --format=esm --outfile="${bundleOut}"`,
+    `"${esbuildBin}" "${serverEntry}" --bundle --platform=node --format=esm --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);" --outfile="${bundleOut}"`,
     { stdio: 'inherit', cwd: root }
   );
   console.log('\u2713 Bundled server with esbuild');
