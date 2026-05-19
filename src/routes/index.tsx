@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Eye } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 export const Route = createFileRoute("/")({ component: Landing });
 
@@ -17,14 +17,14 @@ function Landing() {
           </div>
           <span className="font-display text-[18px] tracking-tight font-semibold">Elevate</span>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-[11px] uppercase tracking-[0.2em] text-muted-foreground font-mono">
-          <Eye className="h-3 w-3" /> Public demo
-        </span>
+        <Link to="/login" className="inline-flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-foreground/40 transition">
+          Sign in
+        </Link>
       </header>
 
       <main className="container mx-auto px-6 relative">
         <section className="pt-20 pb-32 max-w-4xl">
-          <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground font-mono">A transformation engine · est. 2026</p>
+          <p className="text-[11px] uppercase tracking-[0.3em] text-muted-foreground font-mono">A transformation engine</p>
           <h1 className="mt-6 font-display text-[clamp(3rem,9vw,7.5rem)] leading-[0.92] tracking-[-0.05em] font-bold">
             Become<br/>
             <span className="text-electric text-yellow-400">who you</span><br/>
@@ -38,13 +38,13 @@ function Landing() {
             <Link to="/begin" className="btn-chunk group inline-flex items-center gap-2 rounded-full grad-electric px-8 py-4 text-sm font-bold text-white shadow-[var(--shadow-violet)]">
               Begin <ArrowRight className="h-4 w-4 group-hover:translate-x-0.5 transition" />
             </Link>
-            <span className="text-sm text-muted-foreground">
-              Read-only · everything you see is shared
-            </span>
+            <Link to="/login" className="text-sm text-muted-foreground hover:text-foreground transition">
+              Already started? Sign in →
+            </Link>
           </div>
         </section>
 
-        {/* editorial trio — overlapping */}
+        {/* editorial trio — overlapping cards */}
         <section className="relative pb-32 max-w-5xl">
           <div className="grid md:grid-cols-12 gap-6">
             <article className="md:col-span-7 warm-card rounded-[2rem] p-8 md:p-10 relative ambient-warm">
@@ -92,6 +92,18 @@ function Landing() {
             {["Fitness & Body","Mental Health","Quit Bad Habits","Mind & Learning","Productivity & Life"].map((c) => (
               <span key={c} className="rounded-full border border-[color:var(--primary)]/30 bg-card px-4 py-2 text-foreground font-mono uppercase tracking-widest text-[10px]">{c}</span>
             ))}
+          </div>
+        </section>
+
+        {/* bottom CTA */}
+        <section className="pb-32 text-center max-w-2xl mx-auto">
+          <h2 className="font-display text-[clamp(2rem,5vw,4rem)] leading-tight tracking-[-0.04em]">
+            The version of you<br/>who does the work<br/><span className="text-electric text-yellow-400 italic">starts here.</span>
+          </h2>
+          <div className="mt-10">
+            <Link to="/begin" className="btn-chunk group inline-flex items-center gap-2 rounded-full grad-electric px-10 py-5 text-base font-bold text-white shadow-[var(--shadow-violet)]">
+              Begin now <ArrowRight className="h-5 w-5 group-hover:translate-x-0.5 transition" />
+            </Link>
           </div>
         </section>
       </main>
