@@ -26,26 +26,24 @@ if (existsSync(clientDir)) {
   console.log('\u2713 Copied client files');
 }
 
-// Bundle server into single self-contained file using esbuild
+// Bundle server into single self-contained CJS file using esbuild
 const serverEntry = `${root}/dist/server/server.js`;
 if (existsSync(serverEntry)) {
   const esbuildBin = `${root}/node_modules/.bin/esbuild`;
   const bundleOut = `${out}/functions/index.func/server-bundle.js`;
   execSync(
-    `"${esbuildBin}" "${serverEntry}" --bundle --platform=node --format=esm --banner:js="import { createRequire } from 'module'; const require = createRequire(import.meta.url);" --outfile="${bundleOut}"`,
+    `"${esbuildBin}" "${serverEntry}" --bundle --platform=node --format=cjs --outfile="${bundleOut}"`,
     { stdio: 'inherit', cwd: root }
   );
   console.log('\u2713 Bundled server with esbuild');
 }
 
-// Mark function directory as ESM
-writeFileSync(`${out}/functions/index.func/package.json`, JSON.stringify({ type: 'module' }));
-console.log('\u2713 Created package.json (ESM)');
+// Create Vercel Node.js handler wrapper (CommonJS -- works with CJS bundle)
+const handlerCode = `'use strict';
+const bundle = require('./server-bundle.js');
+const server = bundle.default || bundle;
 
-// Create Vercel Node.js handler wrapper
-const handlerCode = `import server from './server-bundle.js';
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
     const host = req.headers['x-forwarded-host'] || req.headers.host || 'localhost';
     const proto = req.headers['x-forwarded-proto'] || 'https';
@@ -79,7 +77,7 @@ export default async function handler(req, res) {
     console.error('SSR error:', err);
     res.status(500).end('Internal Server Error');
   }
-}
+};
 `;
 
 writeFileSync(`${out}/functions/index.func/index.js`, handlerCode);
